@@ -6,6 +6,7 @@ namespace PokemonApp.Web.Models.ViewModels;
 public class PagedPokemonViewModel
 {
     public List<PokemonListItemViewModel> Items { get; set; } = new();
+    public PokemonFilterViewModel Filters { get; set; } = new();
 
     public int CurrentPage { get; set; }
     public int PageSize { get; set; }

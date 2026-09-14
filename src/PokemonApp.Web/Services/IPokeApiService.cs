@@ -9,4 +9,9 @@ public interface IPokeApiService
     /// de más alto nivel, no aquí — este método solo abstrae la obtención cruda + cache.
 
     Task<List<PokemonListItemDto>> GetAllPokemonAsync(CancellationToken cancellationToken = default);
+
+    /// Devuelve el listado de nombres de especie para poblar el dropdown de filtro.
+    /// Cacheado en memoria igual que el listado principal.
+
+    Task<List<PokemonSpeciesListItemDto>> GetAllSpeciesAsync(CancellationToken cancellationToken = default);
 }

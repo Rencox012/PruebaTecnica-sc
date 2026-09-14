@@ -9,7 +9,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient<IPokeApiService, PokeApiService>(client =>
 {
     client.BaseAddress = new Uri("https://pokeapi.co/api/v2/");
-    client.Timeout = TimeSpan.FromSeconds(15);
+    client.Timeout = TimeSpan.FromSeconds(35);
 });
 
 var app = builder.Build();

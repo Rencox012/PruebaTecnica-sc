@@ -7,6 +7,7 @@ namespace PokemonApp.Web.Services;
 public class PokeApiService : IPokeApiService
 {
     private const string AllPokemonCacheKey = "poke:all-pokemon";
+    private const string AllSpeciesCacheKey = "poke:all-species";
 
     // PokeAPI tiene ~1300 Pokémon actualmente; pedimos un límite alto
     // para traer el catálogo completo en una sola llamada y cachearlo.
@@ -57,4 +58,38 @@ public class PokeApiService : IPokeApiService
             throw;
         }
     }
+
+    public async Task<List<PokemonSpeciesListItemDto>> GetAllSpeciesAsync(CancellationToken cancellationToken = default)
+{
+    if (_cache.TryGetValue(AllSpeciesCacheKey, out List<PokemonSpeciesListItemDto>? cached) && cached is not null)
+    {
+        return cached;
+    }
+
+    try
+    {
+        var response = await _httpClient.GetFromJsonAsync<PokemonSpeciesListResponseDto>(
+            $"pokemon-species?limit={FullCatalogLimit}&offset=0",
+            cancellationToken);
+
+        var results = response?.Results ?? new List<PokemonSpeciesListItemDto>();
+
+        _cache.Set(AllSpeciesCacheKey, results, new MemoryCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(6)
+        });
+
+        return results;
+    }
+    catch (HttpRequestException ex)
+    {
+        _logger.LogError(ex, "Error de red al consultar el listado de especies de PokeAPI.");
+        throw;
+    }
+    catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+    {
+        _logger.LogError(ex, "Timeout al consultar el listado de especies de PokeAPI.");
+        throw;
+    }
+}
 }

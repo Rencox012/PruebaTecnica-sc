@@ -1,4 +1,4 @@
-﻿@model List<PokemonApp.Web.Models.ViewModels.PokemonListItemViewModel>
+﻿@model PokemonApp.Web.Models.ViewModels.PagedPokemonViewModel
 
 @{
     ViewData["Title"] = "Pokédex";
@@ -12,7 +12,7 @@
 }
 
 <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-3" id="pokemon-grid">
-    @foreach (var pokemon in Model)
+    @foreach (var pokemon in Model.Items)
     {
         <div class="col">
             <div class="card h-100 text-center">
@@ -26,3 +26,22 @@
         </div>
     }
 </div>
+
+@if (Model.TotalPages > 1)
+{
+    <nav aria-label="Paginación de Pokémon" class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
+                <a class="page-link" asp-action="Index" asp-route-page="@(Model.CurrentPage - 1)">Anterior</a>
+            </li>
+
+            <li class="page-item disabled">
+                <span class="page-link">Página @Model.CurrentPage de @Model.TotalPages</span>
+            </li>
+
+            <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
+                <a class="page-link" asp-action="Index" asp-route-page="@(Model.CurrentPage + 1)">Siguiente</a>
+            </li>
+        </ul>
+    </nav>
+}

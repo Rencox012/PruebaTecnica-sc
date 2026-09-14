@@ -60,36 +60,110 @@ public class PokeApiService : IPokeApiService
     }
 
     public async Task<List<PokemonSpeciesListItemDto>> GetAllSpeciesAsync(CancellationToken cancellationToken = default)
-{
-    if (_cache.TryGetValue(AllSpeciesCacheKey, out List<PokemonSpeciesListItemDto>? cached) && cached is not null)
     {
-        return cached;
-    }
-
-    try
-    {
-        var response = await _httpClient.GetFromJsonAsync<PokemonSpeciesListResponseDto>(
-            $"pokemon-species?limit={FullCatalogLimit}&offset=0",
-            cancellationToken);
-
-        var results = response?.Results ?? new List<PokemonSpeciesListItemDto>();
-
-        _cache.Set(AllSpeciesCacheKey, results, new MemoryCacheEntryOptions
+        if (_cache.TryGetValue(AllSpeciesCacheKey, out List<PokemonSpeciesListItemDto>? cached) && cached is not null)
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(6)
-        });
+            return cached;
+        }
 
-        return results;
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<PokemonSpeciesListResponseDto>(
+                $"pokemon-species?limit={FullCatalogLimit}&offset=0",
+                cancellationToken);
+
+            var results = response?.Results ?? new List<PokemonSpeciesListItemDto>();
+
+            _cache.Set(AllSpeciesCacheKey, results, new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(6)
+            });
+
+            return results;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Error de red al consultar el listado de especies de PokeAPI.");
+            throw;
+        }
+        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogError(ex, "Timeout al consultar el listado de especies de PokeAPI.");
+            throw;
+        }
     }
-    catch (HttpRequestException ex)
+
+    public async Task<PokemonDetailDto?> GetPokemonDetailAsync(int id, CancellationToken cancellationToken = default)
     {
-        _logger.LogError(ex, "Error de red al consultar el listado de especies de PokeAPI.");
-        throw;
+        var cacheKey = $"poke:detail:{id}";
+
+        if (_cache.TryGetValue(cacheKey, out PokemonDetailDto? cached) && cached is not null)
+        {
+            return cached;
+        }
+
+        try
+        {
+            var detail = await _httpClient.GetFromJsonAsync<PokemonDetailDto>($"pokemon/{id}", cancellationToken);
+
+            if (detail is not null)
+            {
+                _cache.Set(cacheKey, detail, new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(6)
+                });
+            }
+
+            return detail;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Error de red al consultar el detalle del Pokémon {Id}.", id);
+            throw;
+        }
+        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogError(ex, "Timeout al consultar el detalle del Pokémon {Id}.", id);
+            throw;
+        }
     }
-    catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+
+    public async Task<PokemonSpeciesDetailDto?> GetSpeciesDetailAsync(int id, CancellationToken cancellationToken = default)
     {
-        _logger.LogError(ex, "Timeout al consultar el listado de especies de PokeAPI.");
-        throw;
+        // Cache independiente del cache de detalle de Pokémon: la especie se pide
+        // por separado 
+        var cacheKey = $"poke:species-detail:{id}";
+
+        if (_cache.TryGetValue(cacheKey, out PokemonSpeciesDetailDto? cached) && cached is not null)
+        {
+            return cached;
+        }
+
+        try
+        {
+            var detail = await _httpClient.GetFromJsonAsync<PokemonSpeciesDetailDto>(
+                $"pokemon-species/{id}", cancellationToken);
+
+            if (detail is not null)
+            {
+                _cache.Set(cacheKey, detail, new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(6)
+                });
+            }
+
+            return detail;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Error de red al consultar la especie del Pokémon {Id}.", id);
+            throw;
+        }
+        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogError(ex, "Timeout al consultar la especie del Pokémon {Id}.", id);
+            throw;
+        }
     }
-}
+
 }

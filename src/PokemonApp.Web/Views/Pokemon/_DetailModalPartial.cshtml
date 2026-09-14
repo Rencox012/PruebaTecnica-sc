@@ -1,0 +1,28 @@
+@model PokemonApp.Web.Models.ViewModels.PokemonDetailViewModel
+
+<div class="text-center">
+    <img src="@Model.ImageUrl" alt="@Model.Name" style="height: 150px; object-fit: contain;" />
+    <h4 class="text-capitalize mt-2">@Model.Name</h4>
+</div>
+
+<dl class="row mt-3">
+    <dt class="col-sm-4">Tipo(s)</dt>
+    <dd class="col-sm-8 text-capitalize">@string.Join(", ", Model.Types)</dd>
+
+    <dt class="col-sm-4">Altura</dt>
+    <dd class="col-sm-8">@(Model.HeightDecimeters / 10.0) m</dd>
+
+    <dt class="col-sm-4">Peso</dt>
+    <dd class="col-sm-8">@(Model.WeightHectograms / 10.0) kg</dd>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Habitat))
+    {
+        <dt class="col-sm-4">Hábitat</dt>
+        <dd class="col-sm-8 text-capitalize">@Model.Habitat</dd>
+    }
+</dl>
+
+@if (!string.IsNullOrWhiteSpace(Model.FlavorText))
+{
+    <p class="fst-italic mt-3">"@Model.FlavorText"</p>
+}

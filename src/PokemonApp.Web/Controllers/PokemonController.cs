@@ -95,4 +95,47 @@ public class PokemonController : Controller
             return View(new PagedPokemonViewModel());
         }
     }
+
+    public async Task<IActionResult> Detail(int id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var detail = await _pokeApiService.GetPokemonDetailAsync(id, cancellationToken);
+
+            if (detail is null)
+            {
+                return NotFound();
+            }
+
+            var species = await _pokeApiService.GetSpeciesDetailAsync(id, cancellationToken);
+
+            var flavorText = species?.FlavorTextEntries
+                .FirstOrDefault(f => f.Language.Name == "es")?.FlavorText
+                ?? species?.FlavorTextEntries.FirstOrDefault(f => f.Language.Name == "en")?.FlavorText;
+
+            var viewModel = new PokemonDetailViewModel
+            {
+                Id = detail.Id,
+                Name = detail.Name,
+                ImageUrl = $"{SpriteBaseUrl}{detail.Id}.png",
+                HeightDecimeters = detail.Height,
+                WeightHectograms = detail.Weight,
+                Types = detail.Types.Select(t => t.Type.Name).ToList(),
+                FlavorText = flavorText?.Replace("\n", " ").Replace("\f", " "),
+                Habitat = species?.Habitat?.Name
+            };
+
+            return PartialView("_DetailModalPartial", viewModel);
+        }
+        catch (HttpRequestException)
+        {
+            _logger.LogError("No se pudo obtener el detalle del Pokémon {Id}.", id);
+            return StatusCode(502, "No se pudo conectar con PokeAPI.");
+        }
+        catch (TaskCanceledException)
+        {
+            _logger.LogError("Timeout al obtener el detalle del Pokémon {Id}.", id);
+            return StatusCode(504, "La solicitud a PokeAPI tardó demasiado.");
+        }
+    }
 }

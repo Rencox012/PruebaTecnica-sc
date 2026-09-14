@@ -14,4 +14,8 @@ public interface IPokeApiService
     /// Cacheado en memoria igual que el listado principal.
 
     Task<List<PokemonSpeciesListItemDto>> GetAllSpeciesAsync(CancellationToken cancellationToken = default);
+
+    Task<PokemonDetailDto?> GetPokemonDetailAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<PokemonSpeciesDetailDto?> GetSpeciesDetailAsync(int id, CancellationToken cancellationToken = default);
 }

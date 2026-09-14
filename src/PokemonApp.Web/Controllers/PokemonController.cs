@@ -14,15 +14,17 @@ public class PokemonController : Controller
     private readonly IPokeApiService _pokeApiService;
     private readonly ILogger<PokemonController> _logger;
     private readonly IExcelExportService _excelExportService;
-
+    private readonly IEmailService _emailService;
     public PokemonController(
     IPokeApiService pokeApiService,
     IExcelExportService excelExportService,
-    ILogger<PokemonController> logger)
+    ILogger<PokemonController> logger,
+    IEmailService emailService)
     {
         _pokeApiService = pokeApiService;
         _excelExportService = excelExportService;
         _logger = logger;
+        _emailService = emailService;
     }
 
 
@@ -191,4 +193,95 @@ public class PokemonController : Controller
         return RedirectToAction(nameof(Index), new { name, species, page });
     }
 }
+
+
+    [HttpGet]
+    public IActionResult SendEmailForm(int? pokemonId, string? name, string? species, int page = 1)
+    {
+        var viewModel = new SendEmailViewModel
+        {
+            PokemonId = pokemonId,
+            Name = name,
+            Species = species,
+            Page = page
+        };
+
+        return PartialView("_SendEmailModalPartial", viewModel);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendEmail(SendEmailViewModel model, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(model.ToAddress))
+        {
+            TempData["ErrorMessage"] = "Debes indicar un correo destino.";
+            return RedirectToAction(nameof(Index), new { name = model.Name, species = model.Species, page = model.Page });
+        }
+
+        try
+        {
+            byte[] excelBytes;
+            string subject;
+            string fileName;
+
+            if (model.PokemonId.HasValue)
+            {
+                // Envío individual: solo ese Pokémon.
+                var detail = await _pokeApiService.GetPokemonDetailAsync(model.PokemonId.Value, cancellationToken);
+
+                if (detail is null)
+                {
+                    TempData["ErrorMessage"] = "No se encontró el Pokémon a enviar.";
+                    return RedirectToAction(nameof(Index), new { name = model.Name, species = model.Species, page = model.Page });
+                }
+
+                var singleItem = new List<PokemonListItemViewModel>
+                {
+                    new() { Id = detail.Id, Name = detail.Name, ImageUrl = $"{SpriteBaseUrl}{detail.Id}.png" }
+                };
+
+                excelBytes = _excelExportService.ExportToExcel(singleItem);
+                subject = $"Reporte Pokémon: {detail.Name}";
+                fileName = $"pokemon-{detail.Name}.xlsx";
+            }
+            else
+            {
+                // Envío general: la página actual completa.
+                var filteredList = await GetFilteredPokemonAsync(model.Name, model.Species, cancellationToken);
+
+                var pageItems = filteredList
+                    .Skip((model.Page - 1) * DefaultPageSize)
+                    .Take(DefaultPageSize)
+                    .Select(p => new PokemonListItemViewModel
+                    {
+                        Id = p.GetId(),
+                        Name = p.Name,
+                        ImageUrl = $"{SpriteBaseUrl}{p.GetId()}.png"
+                    })
+                    .ToList();
+
+                excelBytes = _excelExportService.ExportToExcel(pageItems);
+                subject = $"Reporte Pokémon: página {model.Page}";
+                fileName = $"pokemon-pagina-{model.Page}.xlsx";
+            }
+
+            await _emailService.SendPokemonReportAsync(
+                model.ToAddress,
+                subject,
+                "Adjunto el reporte de Pokémon solicitado.",
+                excelBytes,
+                fileName,
+                cancellationToken);
+
+            TempData["SuccessMessage"] = $"Correo enviado a {model.ToAddress}.";
+        }
+        catch (Exception)
+        {
+            _logger.LogError("Error al enviar el correo a {ToAddress}.", model.ToAddress);
+            TempData["ErrorMessage"] = "No se pudo enviar el correo. Verifica la configuración SMTP.";
+        }
+
+        return RedirectToAction(nameof(Index), new { name = model.Name, species = model.Species, page = model.Page });
+    }
 }

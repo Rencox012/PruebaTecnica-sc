@@ -26,3 +26,7 @@
 {
     <p class="fst-italic mt-3">"@Model.FlavorText"</p>
 }
+<button type="button" class="btn btn-sm btn-outline-info mt-1"
+        onclick="event.stopPropagation(); openSendEmailForm(@Model.Id)">
+    ✉️ Enviar
+</button>

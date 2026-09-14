@@ -38,12 +38,18 @@
         Exportar a Excel (página actual)
     </a>
 </div>
+<button type="button" class="btn btn-info btn-sm" onclick="openSendEmailForm(null)">
+    ✉️ Enviar por correo (página actual)
+</button>
 
 @if (TempData["ErrorMessage"] != null)
 {
     <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
 }
-
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
 <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-3" id="pokemon-grid">
     @foreach (var pokemon in Model.Items)
     {
@@ -55,6 +61,7 @@
                 <div class="card-body p-2">
                     <p class="card-text text-capitalize mb-0">@pokemon.Name</p>
                 </div>
+
             </div>
         </div>
     }
@@ -93,6 +100,19 @@
     </div>
 </div>
 
+<div class="modal fade" id="sendEmailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Enviar por correo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="sendEmailModalBody">
+                <div class="text-center">Cargando...</div>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
     <script src="~/js/pokemon.js"></script>

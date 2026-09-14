@@ -1,0 +1,19 @@
+@model PokemonApp.Web.Models.ViewModels.SendEmailViewModel
+
+<form asp-action="SendEmail" method="post">
+    <input type="hidden" asp-for="PokemonId" />
+    <input type="hidden" asp-for="Name" />
+    <input type="hidden" asp-for="Species" />
+    <input type="hidden" asp-for="Page" />
+
+    <div class="mb-3">
+        <label class="form-label">Correo destino</label>
+        <input type="email" asp-for="ToAddress" class="form-control" required />
+    </div>
+
+    <p class="text-muted small">
+        @(Model.PokemonId.HasValue ? "Se enviará el reporte de este Pokémon." : "Se enviará el reporte de la página actual completa.")
+    </p>
+
+    <button type="submit" class="btn btn-primary">Enviar</button>
+</form>

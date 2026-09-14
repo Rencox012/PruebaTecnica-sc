@@ -16,6 +16,10 @@
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public IActionResult Error()
+    {
+
 # Mono auto generated files
 mono_crash.*
 

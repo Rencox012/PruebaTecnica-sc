@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using PokemonApp.Web.Models.ViewModels;
 using PokemonApp.Web.Services;
+using PokemonApp.Web.Models.Dtos;
 
 
 namespace PokemonApp.Web.Controllers;
@@ -12,12 +13,18 @@ public class PokemonController : Controller
 
     private readonly IPokeApiService _pokeApiService;
     private readonly ILogger<PokemonController> _logger;
+    private readonly IExcelExportService _excelExportService;
 
-    public PokemonController(IPokeApiService pokeApiService, ILogger<PokemonController> logger)
+    public PokemonController(
+    IPokeApiService pokeApiService,
+    IExcelExportService excelExportService,
+    ILogger<PokemonController> logger)
     {
         _pokeApiService = pokeApiService;
+        _excelExportService = excelExportService;
         _logger = logger;
     }
+
 
     private const int DefaultPageSize = 20;
 
@@ -34,25 +41,10 @@ public class PokemonController : Controller
 
         try
         {
-            var allPokemon = await _pokeApiService.GetAllPokemonAsync(cancellationToken);
+            var filteredList = await GetFilteredPokemonAsync(name, species, cancellationToken);
             var allSpecies = await _pokeApiService.GetAllSpeciesAsync(cancellationToken);
 
-            // Filtrado en memoria sobre el catálogo completo (ya cacheado)
-            var filtered = allPokemon.AsEnumerable();
 
-            if (!string.IsNullOrWhiteSpace(name))
-            {
-                filtered = filtered.Where(p => p.Name.Contains(name, StringComparison.OrdinalIgnoreCase));
-            }
-
-            if (!string.IsNullOrWhiteSpace(species))
-            {
-                // Supuesto: el nombre de especie coincide con el nombre base del Pokémon
-                // (ver nota en PokeApiService.GetAllSpeciesAsync).
-                filtered = filtered.Where(p => p.Name.Equals(species, StringComparison.OrdinalIgnoreCase));
-            }
-
-            var filteredList = filtered.ToList();
             var totalCount = filteredList.Count;
 
             var pageItems = filteredList
@@ -138,4 +130,65 @@ public class PokemonController : Controller
             return StatusCode(504, "La solicitud a PokeAPI tardó demasiado.");
         }
     }
+
+    private async Task<List<PokemonListItemDto>> GetFilteredPokemonAsync(
+    string? name, string? species, CancellationToken cancellationToken)
+    {
+        var allPokemon = await _pokeApiService.GetAllPokemonAsync(cancellationToken);
+        var filtered = allPokemon.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            filtered = filtered.Where(p => p.Name.Contains(name, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(species))
+        {
+            filtered = filtered.Where(p => p.Name.Equals(species, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return filtered.ToList();
+    }
+
+    public async Task<IActionResult> ExportExcel(
+    string? name,
+    string? species,
+    int page = 1,
+    CancellationToken cancellationToken = default)
+{
+    if (page < 1)
+    {
+        page = 1;
+    }
+
+    try
+    {
+        var filteredList = await GetFilteredPokemonAsync(name, species, cancellationToken);
+
+        // Exportamos SOLO la página actual.
+        var pageItems = filteredList
+            .Skip((page - 1) * DefaultPageSize)
+            .Take(DefaultPageSize)
+            .Select(p => new PokemonListItemViewModel
+            {
+                Id = p.GetId(),
+                Name = p.Name,
+                ImageUrl = $"{SpriteBaseUrl}{p.GetId()}.png"
+            })
+            .ToList();
+
+        var fileBytes = _excelExportService.ExportToExcel(pageItems);
+
+        return File(
+            fileBytes,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            $"pokemon-pagina-{page}.xlsx");
+    }
+    catch (HttpRequestException)
+    {
+        _logger.LogError("No se pudo obtener datos de PokeAPI para exportar.");
+        TempData["ErrorMessage"] = "No se pudo generar el Excel: error al conectar con PokeAPI.";
+        return RedirectToAction(nameof(Index), new { name, species, page });
+    }
+}
 }

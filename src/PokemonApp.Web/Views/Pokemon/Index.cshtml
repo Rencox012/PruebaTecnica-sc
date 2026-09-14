@@ -29,6 +29,15 @@
         <a asp-action="Index" class="btn btn-outline-secondary">Limpiar</a>
     </div>
 </form>
+<div class="mb-3">
+    <a class="btn btn-success btn-sm"
+        asp-action="ExportExcel"
+        asp-route-name="@Model.Filters.NameFilter"
+        asp-route-species="@Model.Filters.SpeciesFilter"
+        asp-route-page="@Model.CurrentPage">
+        Exportar a Excel (página actual)
+    </a>
+</div>
 
 @if (TempData["ErrorMessage"] != null)
 {

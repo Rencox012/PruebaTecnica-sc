@@ -12,6 +12,8 @@ builder.Services.AddHttpClient<IPokeApiService, PokeApiService>(client =>
     client.Timeout = TimeSpan.FromSeconds(35);
 });
 
+builder.Services.AddScoped<IExcelExportService, ExcelExportService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
